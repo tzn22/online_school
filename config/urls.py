@@ -1,3 +1,4 @@
+# config/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -5,6 +6,15 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.http import JsonResponse
+
+# Health check view
+def health_check(request):
+    return JsonResponse({
+        'status': 'healthy',
+        'message': 'Online School API is running',
+        'timestamp': timezone.now().isoformat()
+    })
 
 # Swagger schema view
 schema_view = get_schema_view(
@@ -21,6 +31,10 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Health check endpoint
+    path('health/', health_check, name='health-check'),
+    
+    # Admin panel
     path('admin/', admin.site.urls),
     
     # API documentation
@@ -35,6 +49,9 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/feedback/', include('feedback.urls')),
     path('api/crm/', include('crm.urls')),
+    path('api/admin-panel/', include('admin_panel.urls')),
+    path('api/whatsapp/', include('whatsapp.urls')),
+    path('api/telegram-bot/', include('telegram_bot.urls')),
 ]
 
 # Static and media files in development
