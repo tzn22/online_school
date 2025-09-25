@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:${DB_PORT:-5432}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-online_school_user} -d ${DB_NAME:-online_school_prod}"]
       interval: 30s
