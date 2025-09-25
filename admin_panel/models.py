@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.conf import settings
 from accounts.models import User
 from courses.models import Course, Group, Lesson
 from payments.models import Payment
