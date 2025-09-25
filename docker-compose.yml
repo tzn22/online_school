@@ -9,6 +9,9 @@ services:
       POSTGRES_DB: online_school
       POSTGRES_USER: online_school_user
       POSTGRES_PASSWORD: online_school_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -16,6 +19,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     networks:
       - online_school_network
 
@@ -23,12 +27,15 @@ services:
     image: redis:7-alpine
     container_name: online_school_redis
     restart: unless-stopped
-    command: redis-server
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     networks:
       - online_school_network
       
@@ -57,15 +64,70 @@ services:
       - .:/app
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - online_school_network
     command: >
       sh -c "
-        sleep 15 &&
-        python manage.py migrate &&
         python manage.py collectstatic --noinput &&
+        python manage.py migrate &&
         gunicorn --bind 0.0.0.0:8000 --workers 3 config.wsgi:application
       "
+
+  # Celery worker
+  celery_worker:
+    build: .
+    container_name: online_school_celery_worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=online_school
+      - DB_USER=online_school_user
+      - DB_PASSWORD=online_school_pass
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+    networks:
+      - online_school_network
+    command: celery -A config worker --loglevel=info
+
+  # Celery beat
+  celery_beat:
+    build: .
+    container_name: online_school_celery_beat
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=online_school
+      - DB_USER=online_school_user
+      - DB_PASSWORD=online_school_pass
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+    networks:
+      - online_school_network
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
 volumes:
   postgres_data:
