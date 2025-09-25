@@ -14,7 +14,37 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-key-chang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0').split(',')
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1', 
+    '0.0.0.0',
+    'fluencyclub.fun',
+    'www.fluencyclub.fun',
+    '116.203.145.245'  # IP сервера
+]
+
+# Или если используешь переменные окружения:
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,fluencyclub.fun,www.fluencyclub.fun,116.203.145.245').split(',')
+
+# CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    'https://fluencyclub.fun',
+    'https://www.fluencyclub.fun',
+    'http://fluencyclub.fun',
+    'http://www.fluencyclub.fun',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+]
+
+# CORS allowed origins
+CORS_ALLOWED_ORIGINS = [
+    'https://fluencyclub.fun',
+    'https://www.fluencyclub.fun',
+    'http://fluencyclub.fun',
+    'http://www.fluencyclub.fun',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+]
 
 # Application definition
 INSTALLED_APPS = [
