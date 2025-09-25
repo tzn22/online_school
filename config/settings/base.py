@@ -172,11 +172,26 @@ CHANNEL_LAYERS = {
     },
 }
 
-# Stripe settings (заглушка)
-STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='sk_test_placeholder')
-STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='pk_test_placeholder')
-
 # YooKassa settings
-YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID', default='')
-YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
-YOOKASSA_RETURN_URL = config('YOOKASSA_RETURN_URL', default='http://localhost:3000/payment-success/')
+YOOKASSA_SHOP_ID = os.environ.get('YOOKASSA_SHOP_ID', 'your_test_shop_id')
+YOOKASSA_SECRET_KEY = os.environ.get('YOOKASSA_SECRET_KEY', 'your_test_secret_key')
+YOOKASSA_RETURN_URL = os.environ.get('YOOKASSA_RETURN_URL', 'http://localhost:8000/payment-success/')
+
+# Stripe settings (для совместимости)
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_your_stripe_secret_key')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_your_stripe_publishable_key')
+
+# Payment providers
+PAYMENT_PROVIDERS = {
+    'yookassa': {
+        'shop_id': YOOKASSA_SHOP_ID,
+        'secret_key': YOOKASSA_SECRET_KEY,
+        'return_url': YOOKASSA_RETURN_URL,
+        'is_active': True
+    },
+    'stripe': {
+        'secret_key': STRIPE_SECRET_KEY,
+        'publishable_key': STRIPE_PUBLISHABLE_KEY,
+        'is_active': False  # По умолчанию выключено
+    }
+}

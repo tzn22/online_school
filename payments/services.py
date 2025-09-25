@@ -1,8 +1,6 @@
+# payments/services.py
 import uuid
 from decimal import Decimal
-from yookassa import Configuration, Payment
-from yookassa.domain.models import Amount, Receipt, ReceiptItem
-from yookassa.domain.request import PaymentRequest
 from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
@@ -13,138 +11,196 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Настройка ЮKassa
-Configuration.account_id = settings.YOOKASSA_SHOP_ID
-Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+# Проверка наличия настроек YooKassa
+try:
+    import yookassa
+    from yookassa import Configuration, Payment
+    from yookassa.domain.models import Amount, Receipt, ReceiptItem
+    from yookassa.domain.request import PaymentRequest
+    
+    # Настройка YooKassa если есть настройки
+    if hasattr(settings, 'YOOKASSA_SHOP_ID') and hasattr(settings, 'YOOKASSA_SECRET_KEY'):
+        Configuration.account_id = settings.YOOKASSA_SHOP_ID
+        Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+        YOOKASSA_CONFIGURED = True
+    else:
+        YOOKASSA_CONFIGURED = False
+        logger.warning("YooKassa не настроена - отсутствуют настройки")
+        
+except ImportError:
+    YOOKASSA_CONFIGURED = False
+    logger.warning("YooKassa не установлена - pip install yookassa")
+    yookassa = None
+    Configuration = None
+    Payment = None
+    Amount = None
+    Receipt = None
+    ReceiptItem = None
+    PaymentRequest = None
 
 class PaymentService:
-    """Сервис для обработки платежей через ЮKassa"""
+    """Сервис для обработки платежей"""
     
     @staticmethod
     def create_payment(student, course, amount, currency='RUB', description='', return_url=None):
-        """Создание платежа через ЮKassa"""
+        """Создание платежа через YooKassa"""
         try:
             # Генерируем уникальный ID для платежа
             payment_id = str(uuid.uuid4())
             
-            # Создаем платеж в ЮKassa
-            payment_data = PaymentRequest({
-                "amount": {
-                    "value": str(amount),
-                    "currency": currency
-                },
-                "confirmation": {
-                    "type": "redirect",
-                    "return_url": return_url or settings.YOOKASSA_RETURN_URL
-                },
-                "capture": True,
-                "description": description or f"Оплата курса: {course.title}",
-                "metadata": {
-                    "payment_id": payment_id,
-                    "student_id": student.id,
-                    "course_id": course.id if course else "",
-                },
-                "receipt": {
-                    "customer": {
-                        "email": student.email
+            # Если YooKassa настроена, создаем платеж через нее
+            if YOOKASSA_CONFIGURED and yookassa:
+                # Создаем платеж в YooKassa
+                payment_data = PaymentRequest({
+                    "amount": {
+                        "value": str(amount),
+                        "currency": currency
                     },
-                    "items": [
-                        {
-                            "description": course.title if course else "Оплата обучения",
-                            "quantity": "1.00",
-                            "amount": {
-                                "value": str(amount),
-                                "currency": currency
-                            },
-                            "vat_code": "1"  # Без НДС
-                        }
-                    ]
+                    "confirmation": {
+                        "type": "redirect",
+                        "return_url": return_url or settings.YOOKASSA_RETURN_URL
+                    },
+                    "capture": True,
+                    "description": description or f"Оплата курса: {course.title}",
+                    "metadata": {
+                        "payment_id": payment_id,
+                        "student_id": student.id,
+                        "course_id": course.id if course else "",
+                    },
+                    "receipt": {
+                        "customer": {
+                            "email": student.email
+                        },
+                        "items": [
+                            {
+                                "description": course.title if course else "Оплата обучения",
+                                "quantity": "1.00",
+                                "amount": {
+                                    "value": str(amount),
+                                    "currency": currency
+                                },
+                                "vat_code": "1"  # Без НДС
+                            }
+                        ]
+                    }
+                })
+                
+                # Отправляем запрос в YooKassa
+                yookassa_payment = Payment.create(payment_data)
+                
+                # Создаем платеж в нашей системе
+                payment = PaymentModel.objects.create(
+                    student=student,
+                    course=course,
+                    amount=amount,
+                    currency=currency,
+                    status='pending',
+                    transaction_id=yookassa_payment.id,
+                    description=description,
+                    payment_method='yookassa',
+                    external_payment_id=payment_id
+                )
+                
+                return {
+                    'success': True,
+                    'payment_url': yookassa_payment.confirmation.confirmation_url,
+                    'payment_id': payment.id,
+                    'external_payment_id': payment_id,
+                    'yookassa_payment_id': yookassa_payment.id
                 }
-            })
-            
-            # Отправляем запрос в ЮKassa
-            yookassa_payment = Payment.create(payment_data)
-            
-            # Создаем платеж в нашей системе
-            payment = PaymentModel.objects.create(
-                student=student,
-                course=course,
-                amount=amount,
-                currency=currency,
-                status='pending',
-                transaction_id=yookassa_payment.id,
-                description=description,
-                payment_method='yookassa',
-                external_payment_id=payment_id
-            )
-            
-            return {
-                'success': True,
-                'payment_url': yookassa_payment.confirmation.confirmation_url,
-                'payment_id': payment.id,
-                'external_payment_id': payment_id,
-                'yookassa_payment_id': yookassa_payment.id
-            }
-            
+            else:
+                # Если YooKassa не настроена, создаем тестовый платеж
+                payment = PaymentModel.objects.create(
+                    student=student,
+                    course=course,
+                    amount=amount,
+                    currency=currency,
+                    status='pending',
+                    transaction_id=f"test_{payment_id}",
+                    description=description,
+                    payment_method='test',
+                    external_payment_id=payment_id
+                )
+                
+                # Для тестирования возвращаем URL на локальный сервер
+                test_payment_url = f"http://localhost:8000/api/payments/test-payment/{payment.id}/"
+                
+                return {
+                    'success': True,
+                    'payment_url': test_payment_url,
+                    'payment_id': payment.id,
+                    'external_payment_id': payment_id,
+                    'message': 'Тестовый платеж (YooKassa не настроена)'
+                }
+                
         except Exception as e:
-            logger.error(f"Ошибка создания платежа в ЮKassa: {str(e)}")
+            logger.error(f"Ошибка создания платежа: {str(e)}")
             return {
                 'success': False,
                 'error': f"Ошибка создания платежа: {str(e)}"
             }
     
     @staticmethod
-    def confirm_payment(yookassa_payment_id):
-        """Подтверждение платежа через webhook от ЮKassa"""
+    def confirm_payment(payment_id):
+        """Подтверждение платежа через webhook от YooKassa"""
         try:
-            # Получаем информацию о платеже из ЮKassa
-            yookassa_payment = Payment.find_one(yookassa_payment_id)
+            payment = PaymentModel.objects.get(id=payment_id)
             
-            # Находим наш платеж по внешнему ID
-            payment = PaymentModel.objects.filter(
-                transaction_id=yookassa_payment.id
-            ).first()
-            
-            if not payment:
-                logger.error(f"Платеж не найден: {yookassa_payment_id}")
-                return {
-                    'success': False,
-                    'error': 'Платеж не найден'
-                }
-            
-            # Обновляем статус платежа
-            if yookassa_payment.status == 'succeeded':
+            # Если это тестовый платеж, подтверждаем сразу
+            if payment.payment_method == 'test':
                 payment.status = 'paid'
                 payment.paid_at = timezone.now()
                 payment.save()
                 
-                # Зачисляем студента на курс
+                # Создаем подписку/запись на курс
                 PaymentService._enroll_student_in_course(payment)
                 
                 # Создаем счет
                 PaymentService._create_invoice(payment)
                 
-                logger.info(f"Платеж успешно подтвержден: {payment.id}")
-                return {'success': True}
+                return {'success': True, 'message': 'Тестовый платеж подтвержден'}
+            
+            # Если YooKassa настроена, проверяем статус платежа
+            elif YOOKASSA_CONFIGURED and yookassa:
+                # Получаем информацию о платеже из YooKassa
+                yookassa_payment = Payment.find_one(payment.transaction_id)
                 
-            elif yookassa_payment.status == 'canceled':
-                payment.status = 'failed'
-                payment.failed_at = timezone.now()
-                payment.save()
-                
-                logger.info(f"Платеж отменен: {payment.id}")
-                return {
-                    'success': True,
-                    'message': 'Платеж отменен'
-                }
-                
+                if yookassa_payment.status == 'succeeded':
+                    payment.status = 'paid'
+                    payment.paid_at = timezone.now()
+                    payment.transaction_id = yookassa_payment.id
+                    payment.save()
+                    
+                    # Создаем подписку/запись на курс
+                    PaymentService._enroll_student_in_course(payment)
+                    
+                    # Создаем счет
+                    PaymentService._create_invoice(payment)
+                    
+                    return {'success': True}
+                elif yookassa_payment.status == 'canceled':
+                    payment.status = 'failed'
+                    payment.save()
+                    return {
+                        'success': True,
+                        'message': 'Платеж отменен'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Платеж не был успешно обработан. Статус: {yookassa_payment.status}'
+                    }
             else:
-                logger.warning(f"Неизвестный статус платежа: {yookassa_payment.status}")
                 return {
                     'success': False,
-                    'error': f'Неизвестный статус платежа: {yookassa_payment.status}'
+                    'error': 'Платежная система не настроена'
                 }
                 
+        except PaymentModel.DoesNotExist:
+            return {
+                'success': False,
+                'error': 'Платеж не найден'
+            }
         except Exception as e:
             logger.error(f"Ошибка подтверждения платежа: {str(e)}")
             return {
@@ -156,8 +212,8 @@ class PaymentService:
     def _enroll_student_in_course(payment):
         """Зачисление студента на курс после оплаты"""
         try:
-            if payment.course:
-                # Ищем группу по умолчанию для курса
+            if payment.course and payment.student:
+                # Получаем группу по умолчанию для курса
                 group = Group.objects.filter(
                     course=payment.course,
                     is_active=True
@@ -201,108 +257,11 @@ class PaymentService:
         except Exception as e:
             logger.error(f"Ошибка создания счета: {str(e)}")
             return None
-    
-    @staticmethod
-    def create_refund(payment, amount=None, reason=''):
-        """Создание возврата средств"""
-        try:
-            if not payment.is_paid:
-                return {
-                    'success': False,
-                    'error': 'Невозможно вернуть средства за неоплаченный платеж'
-                }
-            
-            # Создаем возврат в ЮKassa
-            refund_amount = amount or payment.amount
-            
-            refund_data = {
-                "amount": {
-                    "value": str(refund_amount),
-                    "currency": payment.currency
-                },
-                "payment_id": payment.transaction_id,
-                "description": reason or "Возврат средств"
-            }
-            
-            # Здесь должна быть логика создания возврата в ЮKassa
-            # Для примера возвращаем успешный результат
-            
-            # Создаем запись о возврате в нашей системе
-            refund = Refund.objects.create(
-                payment=payment,
-                amount=refund_amount,
-                reason=reason,
-                status='pending'
-            )
-            
-            # Обновляем статус платежа
-            payment.status = 'refunded'
-            payment.save()
-            
-            logger.info(f"Создан возврат: {refund.id}")
-            
-            return {
-                'success': True,
-                'refund_id': refund.id,
-                'message': 'Возврат средств инициирован'
-            }
-            
-        except Exception as e:
-            logger.error(f"Ошибка создания возврата: {str(e)}")
-            return {
-                'success': False,
-                'error': f"Ошибка создания возврата: {str(e)}"
-            }
-    
-    @staticmethod
-    def get_payment_status(transaction_id):
-        """Получение статуса платежа из ЮKassa"""
-        try:
-            yookassa_payment = Payment.find_one(transaction_id)
-            return {
-                'status': yookassa_payment.status,
-                'paid': yookassa_payment.paid,
-                'amount': yookassa_payment.amount.value,
-                'currency': yookassa_payment.amount.currency,
-                'created_at': yookassa_payment.created_at,
-                'description': yookassa_payment.description
-            }
-        except Exception as e:
-            logger.error(f"Ошибка получения статуса платежа: {str(e)}")
-            return {
-                'success': False,
-                'error': f"Ошибка получения статуса платежа: {str(e)}"
-            }
-    
-    @staticmethod
-    def cancel_payment(payment):
-        """Отмена платежа"""
-        try:
-            # В ЮKassa отмена возможна только до подтверждения
-            # Здесь должна быть логика отмены в ЮKassa
-            
-            payment.status = 'cancelled'
-            payment.cancelled_at = timezone.now()
-            payment.save()
-            
-            logger.info(f"Платеж отменен: {payment.id}")
-            
-            return {
-                'success': True,
-                'message': 'Платеж отменен'
-            }
-            
-        except Exception as e:
-            logger.error(f"Ошибка отмены платежа: {str(e)}")
-            return {
-                'success': False,
-                'error': f"Ошибка отмены платежа: {str(e)}"
-            }
 
-# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+# === ТЕСТОВЫЕ ФУНКЦИИ ===
 
-def format_amount_for_yookassa(amount):
-    """Форматирование суммы для ЮKassa"""
+def format_amount_for_payment(amount):
+    """Форматирование суммы для платежной системы"""
     return f"{amount:.2f}"
 
 def validate_payment_data(student, course, amount):
