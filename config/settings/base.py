@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'channels',
     'django_celery_beat',
     'django_celery_results',
+    'django_redis',
     
     # Local apps
     'accounts',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'notifications',
     'feedback',
     'crm',
+    'admin_panel',  # <- Добавь это!
 ]
 
 MIDDLEWARE = [
