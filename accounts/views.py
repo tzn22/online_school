@@ -836,3 +836,19 @@ def mark_consultation_completed(request, consultation_id):
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
         )
+# Добавим в конец файла после существующих вьюх:
+
+from rest_framework import generics
+from .models import RegistrationProfile
+from .serializers import RegistrationProfileSerializer
+
+class RegistrationProfileView(generics.RetrieveUpdateAPIView):
+    """Профиль регистрации пользователя"""
+    serializer_class = RegistrationProfileSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self):
+        profile, created = RegistrationProfile.objects.get_or_create(
+            user=self.request.user
+        )
+        return profile

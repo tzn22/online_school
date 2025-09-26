@@ -1,12 +1,13 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
-    RegistrationProfileView,
     register_user,
     CustomTokenObtainPairView,
     UserProfileView,
     UserListView,
     UserDetailView,
+    # === ИМПОРТИРУЕМ RegistrationProfileView ===
+    RegistrationProfileView,
     # === ПОЛНАЯ ЛОГИКА РЕГИСТРАЦИИ И ТЕСТИРОВАНИЯ ===
     get_registration_steps,
     get_survey_questions,
@@ -20,7 +21,8 @@ from .views import (
     request_consultation,
     get_user_dashboard,
     get_consultation_requests,
-    mark_consultation_completed
+    mark_consultation_completed,
+    test_auth_endpoint
 )
 
 urlpatterns = [
@@ -31,6 +33,7 @@ urlpatterns = [
     
     # Профиль
     path('profile/', UserProfileView.as_view(), name='user_profile'),
+    # === ИСПРАВЛЕНО: Добавлен импорт RegistrationProfileView ===
     path('registration-profile/', RegistrationProfileView.as_view(), name='registration-profile'),
     
     # Пользователи
@@ -60,4 +63,7 @@ urlpatterns = [
     path('consultation/request/', request_consultation, name='request-consultation'),
     path('consultation/requests/', get_consultation_requests, name='consultation-requests'),
     path('consultation/requests/<int:consultation_id>/complete/', mark_consultation_completed, name='mark-consultation-completed'),
+    
+    # Тестовый эндпоинт
+    path('test-auth/', test_auth_endpoint, name='test-auth'),
 ]

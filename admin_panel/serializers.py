@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import AdminActionLog, ReportTemplate, GeneratedReport, MassEmailCampaign, SystemSetting
-from accounts.models import User
+from accounts.models import RegistrationProfile, User
 
 class AdminActionLogSerializer(serializers.ModelSerializer):
     admin_user_name = serializers.CharField(source='admin_user.get_full_name', read_only=True)
@@ -56,3 +56,13 @@ class SystemSettingSerializer(serializers.ModelSerializer):
     def validate_value(self, value):
         # Здесь можно добавить валидацию в зависимости от типа настройки
         return value
+# Добавим в конец файла после существующих сериализаторов:
+
+class RegistrationProfileSerializer(serializers.ModelSerializer):
+    """Сериализатор профиля регистрации"""
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    
+    class Meta:
+        model = RegistrationProfile
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'updated_at']
