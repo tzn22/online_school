@@ -9,7 +9,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
-from .models import User, RegistrationProfile, SurveyQuestion, SurveyOption, SurveyResponse, LanguageTest, TestQuestion, TestOption, TestResult, ConsultationRequest
+from accounts.models import RegistrationProfile 
+from .models import User, SurveyQuestion, SurveyOption, SurveyResponse, LanguageTest, TestQuestion, TestOption, TestResult, ConsultationRequest
 from .serializers import (
     UserSerializer, 
     UserRegistrationSerializer, 
