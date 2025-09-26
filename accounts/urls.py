@@ -64,6 +64,4 @@ urlpatterns = [
     path('consultation/requests/', get_consultation_requests, name='consultation-requests'),
     path('consultation/requests/<int:consultation_id>/complete/', mark_consultation_completed, name='mark-consultation-completed'),
     
-    # Тестовый эндпоинт
-    path('test-auth/', test_auth_endpoint, name='test-auth'),
 ]
