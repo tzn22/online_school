@@ -1,6 +1,5 @@
-"""
-Base settings for Online School project.
-"""
+# Найди или добавь следующие строки в config/settings/base.py:
+
 import os
 from pathlib import Path
 from decouple import config
@@ -14,36 +13,29 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-key-chang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+# === ИСПРАВЛЕННЫЕ ALLOWED_HOSTS ===
 ALLOWED_HOSTS = [
     'localhost',
-    '127.0.0.1', 
+    '127.0.0.1',
     '0.0.0.0',
     'fluencyclub.fun',
     'www.fluencyclub.fun',
     '116.203.145.245'  # IP сервера
 ]
 
-# Или если используешь переменные окружения:
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,fluencyclub.fun,www.fluencyclub.fun,116.203.145.245').split(',')
-
-# CSRF trusted origins
+# CSRF и CORS настройки
 CSRF_TRUSTED_ORIGINS = [
     'https://fluencyclub.fun',
     'https://www.fluencyclub.fun',
     'http://fluencyclub.fun',
-    'http://www.fluencyclub.fun',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://www.fluencyclub.fun'
 ]
 
-# CORS allowed origins
 CORS_ALLOWED_ORIGINS = [
     'https://fluencyclub.fun',
     'https://www.fluencyclub.fun',
     'http://fluencyclub.fun',
-    'http://www.fluencyclub.fun',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://www.fluencyclub.fun'
 ]
 
 # Application definition
@@ -74,7 +66,6 @@ INSTALLED_APPS = [
     'notifications',
     'feedback',
     'crm',
-    'admin_panel',  # <- Добавь это!
 ]
 
 MIDDLEWARE = [
@@ -149,10 +140,10 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = config('STATIC_URL', default='/static/')
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = config('MEDIA_URL', default='/media/')
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
@@ -191,7 +182,6 @@ SIMPLE_JWT = {
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
-CORS_ALLOW_ALL_ORIGINS = False
 
 # Email settings
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
@@ -206,11 +196,6 @@ SERVER_EMAIL = config('SERVER_EMAIL', default='admin@localhost')
 # Celery settings
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Europe/Moscow'
-CELERY_ENABLE_UTC = True
 
 # Channels settings
 CHANNEL_LAYERS = {
@@ -230,11 +215,3 @@ STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='pk_test_place
 YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID', default='')
 YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
 YOOKASSA_RETURN_URL = config('YOOKASSA_RETURN_URL', default='https://fluencyclub.fun/payment-success/')
-
-# Security settings
-SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
-SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
-SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
-CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
-SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
