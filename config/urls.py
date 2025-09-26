@@ -2,15 +2,15 @@
 Main URL configuration for Online School project.
 """
 from django.contrib import admin
-from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-# Swagger schema view
+# === ИСПРАВЛЕННЫЙ SCHEMA VIEW ===
 schema_view = get_schema_view(
    openapi.Info(
       title="Online School API",
@@ -28,11 +28,12 @@ urlpatterns = [
     # Admin panel
     path('admin/', admin.site.urls),
     
-    # API documentation with authentication
+    # === ИСПРАВЛЕННЫЕ URL ДЛЯ SWAGGER ===
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger.yaml', schema_view.without_ui(cache_timeout=0, renderer_classes=[openapi.renderers.YamlRenderer]), name='schema-yaml'),
+    # УДАЛИМ НЕПРАВИЛЬНУЮ СТРОКУ С renderer_classes
+    # path('swagger.yaml', schema_view.without_ui(cache_timeout=0, renderer_classes=[openapi.renderers.YamlRenderer]), name='schema-yaml'),
     
     # App URLs
     path('api/auth/', include('accounts.urls')),
@@ -43,11 +44,18 @@ urlpatterns = [
     path('api/feedback/', include('feedback.urls')),
     path('api/crm/', include('crm.urls')),
     path('api/admin-panel/', include('admin_panel.urls')),
-    path('api/whatsapp/', include('whatsapp.urls')),
-    path('api/telegram-bot/', include('telegram_bot.urls')),
     
     # Health check
     path('health/', lambda request: JsonResponse({'status': 'healthy'})),
+    path('', lambda request: JsonResponse({
+        'message': 'Online School API',
+        'version': '1.0.0',
+        'documentation': {
+            'swagger': '/swagger/',
+            'redoc': '/redoc/',
+            'api_docs': '/swagger.json'
+        }
+    })),
 ]
 
 # Static and media files in development
