@@ -84,49 +84,6 @@ class User(AbstractUser):
         return []
 
 # === НОВЫЕ МОДЕЛИ ДЛЯ РЕГИСТРАЦИИ И ОПРОСА ===
-
-# Добавим в конец файла перед последней строкой:
-
-class RegistrationProfile(models.Model):
-    """Дополнительные данные профиля регистрации"""
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='registration_profile'
-    )
-    goals = models.TextField(
-        blank=True,
-        verbose_name=_('Цели изучения языка')
-    )
-    age = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        verbose_name=_('Возраст (для детей)')
-    )
-    learning_goals = models.TextField(
-        blank=True,
-        verbose_name=_('Цели обучения')
-    )
-    has_studied_language = models.BooleanField(
-        default=False,
-        verbose_name=_('Ранее изучал язык')
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name=_('Дата создания')
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name=_('Дата обновления')
-    )
-    
-    class Meta:
-        verbose_name = _('Профиль регистрации')
-        verbose_name_plural = _('Профили регистрации')
-        app_label = 'accounts'  # ← ВАЖНО: правильный app_label!
-    
-    def __str__(self):
-        return f"Профиль {self.user.get_full_name() or self.user.username}"
 class SurveyQuestion(models.Model):
     """Вопросы для опроса"""
     QUESTION_TYPE_CHOICES = [

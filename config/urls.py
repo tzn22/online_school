@@ -24,16 +24,18 @@ schema_view = get_schema_view(
    permission_classes=[permissions.AllowAny],
 )
 
+# Удали эти строки:
+# path('api/admin-panel/', include('admin_panel.urls')),
+
+# Должно остаться:
 urlpatterns = [
     # Admin panel
     path('admin/', admin.site.urls),
     
-    # === ИСПРАВЛЕННЫЕ URL ДЛЯ SWAGGER ===
+    # API documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    # УДАЛИМ НЕПРАВИЛЬНУЮ СТРОКУ С renderer_classes
-    # path('swagger.yaml', schema_view.without_ui(cache_timeout=0, renderer_classes=[openapi.renderers.YamlRenderer]), name='schema-yaml'),
     
     # App URLs
     path('api/auth/', include('accounts.urls')),
@@ -43,7 +45,6 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/feedback/', include('feedback.urls')),
     path('api/crm/', include('crm.urls')),
-    path('api/admin-panel/', include('admin_panel.urls')),
     
     # Health check
     path('health/', lambda request: JsonResponse({'status': 'healthy'})),
@@ -57,7 +58,6 @@ urlpatterns = [
         }
     })),
 ]
-
 # Static and media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
