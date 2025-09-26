@@ -1,8 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from accounts.models import User
-from courses.models import Course, Group, Lesson
-from payments.models import Payment
 
 class AdminActionLog(models.Model):
     """Лог действий администраторов"""
@@ -13,8 +11,8 @@ class AdminActionLog(models.Model):
         ('bulk_action', 'Массовое действие'),
         ('export', 'Экспорт'),
         ('import', 'Импорт'),
-        ('login', 'Вход в систему'),
-        ('logout', 'Выход из системы'),
+        ('login', 'Вход'),
+        ('logout', 'Выход'),
     ]
     
     admin_user = models.ForeignKey(
@@ -59,14 +57,72 @@ class AdminActionLog(models.Model):
         verbose_name = _('Лог действия администратора')
         verbose_name_plural = _('Логи действий администраторов')
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['admin_user', 'created_at']),
-            models.Index(fields=['action_type', 'created_at']),
-            models.Index(fields=['model_name', 'created_at']),
-        ]
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
     
     def __str__(self):
         return f"{self.admin_user} - {self.get_action_type_display()} - {self.model_name}"
+
+# Добавим остальные модели с app_label
+class SystemSetting(models.Model):
+    """Системные настройки"""
+    SETTING_TYPE_CHOICES = [
+        ('boolean', 'Булево значение'),
+        ('integer', 'Целое число'),
+        ('float', 'Дробное число'),
+        ('string', 'Строка'),
+        ('text', 'Текст'),
+        ('json', 'JSON'),
+    ]
+    
+    key = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name=_('Ключ настройки')
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name=_('Название настройки')
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name=_('Описание')
+    )
+    setting_type = models.CharField(
+        max_length=20,
+        choices=SETTING_TYPE_CHOICES,
+        default='string',
+        verbose_name=_('Тип настройки')
+    )
+    value = models.TextField(
+        blank=True,
+        verbose_name=_('Значение')
+    )
+    is_public = models.BooleanField(
+        default=False,
+        verbose_name=_('Публичная настройка')
+    )
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name=_('Категория')
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Дата создания')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Дата обновления')
+    )
+    
+    class Meta:
+        verbose_name = _('Системная настройка')
+        verbose_name_plural = _('Системные настройки')
+        ordering = ['category', 'name']
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
+    
+    def __str__(self):
+        return self.name
 
 class ReportTemplate(models.Model):
     """Шаблоны отчетов"""
@@ -123,6 +179,7 @@ class ReportTemplate(models.Model):
         verbose_name = _('Шаблон отчета')
         verbose_name_plural = _('Шаблоны отчетов')
         ordering = ['name']
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
     
     def __str__(self):
         return self.name
@@ -172,11 +229,7 @@ class GeneratedReport(models.Model):
         verbose_name = _('Сгенерированный отчет')
         verbose_name_plural = _('Сгенерированные отчеты')
         ordering = ['-generated_at']
-        indexes = [
-            models.Index(fields=['report_template', 'generated_at']),
-            models.Index(fields=['generated_by', 'generated_at']),
-            models.Index(fields=['is_published', 'generated_at']),
-        ]
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
     
     def __str__(self):
         return f"{self.title} ({self.period_start} - {self.period_end})"
@@ -273,11 +326,7 @@ class MassEmailCampaign(models.Model):
         verbose_name = _('Email кампания')
         verbose_name_plural = _('Email кампании')
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['status', 'created_at']),
-            models.Index(fields=['created_by', 'created_at']),
-            models.Index(fields=['scheduled_at']),
-        ]
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
     
     def __str__(self):
         return self.name
@@ -289,48 +338,107 @@ class MassEmailCampaign(models.Model):
             return round((self.sent_count - self.failed_count) / self.sent_count * 100, 2)
         return 0
 
-class SystemSetting(models.Model):
-    """Системные настройки"""
-    SETTING_TYPE_CHOICES = [
-        ('boolean', 'Булево значение'),
-        ('integer', 'Целое число'),
-        ('float', 'Дробное число'),
-        ('string', 'Строка'),
-        ('text', 'Текст'),
-        ('json', 'JSON'),
+class CampaignRecipient(models.Model):
+    """Получатели email кампании"""
+    campaign = models.ForeignKey(
+        MassEmailCampaign,
+        on_delete=models.CASCADE,
+        related_name='recipients',
+        verbose_name=_('Кампания')
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name=_('Пользователь')
+    )
+    email = models.EmailField(
+        verbose_name=_('Email')
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'В ожидании'),
+            ('sent', 'Отправлено'),
+            ('failed', 'Ошибка'),
+            ('delivered', 'Доставлено'),
+            ('opened', 'Открыто'),
+        ],
+        default='pending',
+        verbose_name=_('Статус')
+    )
+    sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Отправлено')
+    )
+    delivered_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Доставлено')
+    )
+    opened_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Открыто')
+    )
+    error_message = models.TextField(
+        blank=True,
+        verbose_name=_('Сообщение об ошибке')
+    )
+    
+    class Meta:
+        verbose_name = _('Получатель кампании')
+        verbose_name_plural = _('Получатели кампании')
+        unique_together = ['campaign', 'user']
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
+    
+    def __str__(self):
+        return f"{self.user} - {self.campaign}"
+
+class AdminDashboardWidget(models.Model):
+    """Виджеты дашборда администратора"""
+    WIDGET_TYPE_CHOICES = [
+        ('statistic', 'Статистика'),
+        ('chart', 'График'),
+        ('table', 'Таблица'),
+        ('notification', 'Уведомление'),
+        ('quick_action', 'Быстрое действие'),
     ]
     
-    key = models.CharField(
-        max_length=100,
-        unique=True,
-        verbose_name=_('Ключ настройки')
-    )
     name = models.CharField(
+        max_length=100,
+        verbose_name=_('Название виджета')
+    )
+    widget_type = models.CharField(
+        max_length=20,
+        choices=WIDGET_TYPE_CHOICES,
+        default='statistic',
+        verbose_name=_('Тип виджета')
+    )
+    title = models.CharField(
         max_length=255,
-        verbose_name=_('Название настройки')
+        verbose_name=_('Заголовок')
     )
     description = models.TextField(
         blank=True,
         verbose_name=_('Описание')
     )
-    setting_type = models.CharField(
-        max_length=20,
-        choices=SETTING_TYPE_CHOICES,
-        default='string',
-        verbose_name=_('Тип настройки')
+    data_source = models.CharField(
+        max_length=100,
+        verbose_name=_('Источник данных')
     )
-    value = models.TextField(
+    config = models.JSONField(
+        default=dict,
         blank=True,
-        verbose_name=_('Значение')
+        verbose_name=_('Конфигурация')
     )
-    is_public = models.BooleanField(
-        default=False,
-        verbose_name=_('Публичная настройка')
+    position = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Позиция')
     )
-    category = models.CharField(
-        max_length=50,
-        blank=True,
-        verbose_name=_('Категория')
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Активен')
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -342,36 +450,10 @@ class SystemSetting(models.Model):
     )
     
     class Meta:
-        verbose_name = _('Системная настройка')
-        verbose_name_plural = _('Системные настройки')
-        ordering = ['category', 'name']
-        indexes = [
-            models.Index(fields=['key']),
-            models.Index(fields=['category']),
-            models.Index(fields=['is_public']),
-        ]
+        verbose_name = _('Виджет дашборда')
+        verbose_name_plural = _('Виджеты дашборда')
+        ordering = ['position']
+        app_label = 'admin_panel'  # ← ДОБАВИЛИ ЭТО!
     
     def __str__(self):
-        return f"{self.name} ({self.key})"
-    
-    def get_typed_value(self):
-        """Получить значение в правильном типе"""
-        if self.setting_type == 'boolean':
-            return self.value.lower() in ('true', '1', 'yes', 'on')
-        elif self.setting_type == 'integer':
-            try:
-                return int(self.value)
-            except ValueError:
-                return 0
-        elif self.setting_type == 'float':
-            try:
-                return float(self.value)
-            except ValueError:
-                return 0.0
-        elif self.setting_type == 'json':
-            import json
-            try:
-                return json.loads(self.value)
-            except json.JSONDecodeError:
-                return {}
-        return self.value
+        return self.name
