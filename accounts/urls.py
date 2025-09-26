@@ -22,7 +22,6 @@ from .views import (
     get_user_dashboard,
     get_consultation_requests,
     mark_consultation_completed,
-    test_auth_endpoint
 )
 
 urlpatterns = [
