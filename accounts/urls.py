@@ -1,12 +1,12 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
-    CustomTokenObtainPairView,
+    RegistrationProfileView,
     register_user,
+    CustomTokenObtainPairView,
     UserProfileView,
     UserListView,
     UserDetailView,
-    RegistrationProfileView,
     # === ПОЛНАЯ ЛОГИКА РЕГИСТРАЦИИ И ТЕСТИРОВАНИЯ ===
     get_registration_steps,
     get_survey_questions,

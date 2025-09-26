@@ -24,6 +24,153 @@ from .serializers import (
 )
 from courses.models import Course
 from courses.serializers import CourseSerializer
+# Добавим в начало файла после импортов
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+# Обновим вьюхи с Swagger документацией
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Получение JWT токенов для аутентификации
+    
+    Возвращает access и refresh токены для авторизации в API.
+    Используйте access токен в заголовке Authorization: Bearer <token>
+    """
+    
+    @swagger_auto_schema(
+        operation_description="Получение JWT токенов для аутентификации",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Имя пользователя'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль'),
+            },
+            required=['username', 'password']
+        ),
+        responses={
+            200: openapi.Response(
+                description="Успешная аутентификация",
+                examples={
+                    "application/json": {
+                        "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                        "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                    }
+                }
+            ),
+            401: "Неверные учетные данные"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Регистрация нового пользователя",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'username': openapi.Schema(type=openapi.TYPE_STRING, description='Имя пользователя'),
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email'),
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль'),
+            'password_confirm': openapi.Schema(type=openapi.TYPE_STRING, description='Подтверждение пароля'),
+            'role': openapi.Schema(type=openapi.TYPE_STRING, description='Роль (student, teacher, parent)'),
+            'first_name': openapi.Schema(type=openapi.TYPE_STRING, description='Имя'),
+            'last_name': openapi.Schema(type=openapi.TYPE_STRING, description='Фамилия'),
+            'has_studied_language': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Ранее изучал язык'),
+        },
+        required=['username', 'email', 'password', 'password_confirm', 'role']
+    ),
+    responses={
+        201: "Пользователь успешно зарегистрирован",
+        400: "Ошибки валидации"
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """Регистрация нового пользователя"""
+    serializer = UserRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        
+        # Отправляем приветственное письмо если не изучал язык
+        if not user.has_studied_language:
+            send_welcome_email_with_credentials(user)
+        
+        return Response({
+            'message': 'Пользователь успешно зарегистрирован',
+            'user': UserSerializer(user).data,
+            'has_studied_language': user.has_studied_language
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    """
+    Просмотр и редактирование профиля пользователя
+    
+    GET: Получить профиль текущего пользователя
+    PUT/PATCH: Обновить профиль текущего пользователя
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self):
+        return self.request.user
+
+# === ДОБАВИМ SWAGGER ДОКУМЕНТАЦИЮ ДЛЯ ОСТАЛЬНЫХ ЭНДПОИНТОВ ===
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить текущий шаг регистрации пользователя",
+    responses={
+        200: openapi.Response(
+            description="Текущий шаг регистрации",
+            examples={
+                "application/json": {
+                    "registration_complete": True,
+                    "survey_complete": False,
+                    "test_assigned": False,
+                    "test_complete": False,
+                    "courses_selected": False,
+                    "payment_complete": False
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_registration_steps(request):
+    """Получить текущий шаг регистрации пользователя"""
+    user = request.user
+    
+    steps = {
+        'registration_complete': True,
+        'survey_complete': False,
+        'test_assigned': False,
+        'test_complete': False,
+        'courses_selected': False,
+        'payment_complete': False
+    }
+    
+    # Проверяем, есть ли ответы на опрос
+    survey_responses = SurveyResponse.objects.filter(user=user)
+    if survey_responses.exists():
+        steps['survey_complete'] = True
+    
+    # Проверяем, есть ли результаты теста
+    test_results = TestResult.objects.filter(user=user)
+    if test_results.exists():
+        steps['test_complete'] = True
+        steps['courses_selected'] = True  # После теста можно выбирать курсы
+    
+    # Проверяем, есть ли оплаченные курсы
+    from payments.models import Payment
+    paid_payments = Payment.objects.filter(student=user, status='paid')
+    if paid_payments.exists():
+        steps['payment_complete'] = True
+    
+    return Response(steps)
 
 User = get_user_model()
 

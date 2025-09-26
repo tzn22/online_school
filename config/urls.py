@@ -1,3 +1,6 @@
+"""
+Main URL configuration for Online School project.
+"""
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
@@ -22,11 +25,14 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Admin panel
     path('admin/', admin.site.urls),
     
-    # API documentation
+    # API documentation with authentication
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('swagger.yaml', schema_view.without_ui(cache_timeout=0, renderer_classes=[openapi.renderers.YamlRenderer]), name='schema-yaml'),
     
     # App URLs
     path('api/auth/', include('accounts.urls')),
@@ -36,6 +42,9 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/feedback/', include('feedback.urls')),
     path('api/crm/', include('crm.urls')),
+    path('api/admin-panel/', include('admin_panel.urls')),
+    path('api/whatsapp/', include('whatsapp.urls')),
+    path('api/telegram-bot/', include('telegram_bot.urls')),
     
     # Health check
     path('health/', lambda request: JsonResponse({'status': 'healthy'})),
