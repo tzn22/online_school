@@ -1,77 +1,51 @@
 from django.contrib import admin
-from .models import StudentProfile, TeacherProfile, Lead, StudentActivity, AnalyticsReport
-
-@admin.register(StudentProfile)
-class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = [
-        'student', 'education_level', 'school', 'grade', 
-        'target_language', 'language_level', 'created_at'
-    ]
-    list_filter = [
-        'education_level', 'target_language', 'language_level', 
-        'created_at'
-    ]
-    search_fields = [
-        'student__username', 'student__email', 'student__first_name', 
-        'student__last_name', 'school'
-    ]
-    readonly_fields = ['created_at', 'updated_at']
-
-@admin.register(TeacherProfile)
-class TeacherProfileAdmin(admin.ModelAdmin):
-    list_display = [
-        'teacher', 'degree', 'university', 'years_of_experience', 
-        'created_at'
-    ]
-    list_filter = [
-        'degree', 'years_of_experience', 'created_at'
-    ]
-    search_fields = [
-        'teacher__username', 'teacher__email', 'teacher__first_name', 
-        'teacher__last_name', 'university', 'specialization'
-    ]
-    readonly_fields = ['created_at', 'updated_at']
+from .models import Customer, Deal, Activity, Task, Note, Report, Lead
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
-    list_display = [
-        'first_name', 'last_name', 'email', 'phone', 'status', 
-        'source', 'assigned_to', 'created_at'
-    ]
-    list_filter = [
-        'status', 'source', 'assigned_to', 'created_at'
-    ]
-    search_fields = [
-        'first_name', 'last_name', 'email', 'phone', 'notes'
-    ]
-    readonly_fields = ['created_at', 'updated_at', 'converted_at']
-    date_hierarchy = 'created_at'
+    list_display = ['first_name', 'last_name', 'email', 'phone', 'status', 'source', 'created_at']
+    list_filter = ['status', 'source', 'created_at']
+    search_fields = ['first_name', 'last_name', 'email', 'phone']
+    readonly_fields = ['created_at', 'updated_at']
 
-@admin.register(StudentActivity)
-class StudentActivityAdmin(admin.ModelAdmin):
-    list_display = [
-        'student', 'activity_type', 'description', 'created_at'
-    ]
-    list_filter = [
-        'activity_type', 'created_at'
-    ]
-    search_fields = [
-        'student__username', 'student__email', 'description'
-    ]
-    readonly_fields = ['created_at']
-    date_hierarchy = 'created_at'
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ['user', 'company', 'position', 'lead', 'assigned_to', 'created_at']
+    list_filter = ['created_at', 'assigned_to']
+    search_fields = ['user__username', 'company', 'position', 'lead__first_name', 'lead__last_name']
+    readonly_fields = ['created_at', 'updated_at']
 
-@admin.register(AnalyticsReport)
-class AnalyticsReportAdmin(admin.ModelAdmin):
-    list_display = [
-        'title', 'report_type', 'period_start', 'period_end', 
-        'generated_by', 'generated_at', 'is_published'
-    ]
-    list_filter = [
-        'report_type', 'is_published', 'generated_at'
-    ]
-    search_fields = [
-        'title', 'generated_by__username'
-    ]
-    readonly_fields = ['generated_at']
-    date_hierarchy = 'generated_at'
+@admin.register(Deal)
+class DealAdmin(admin.ModelAdmin):
+    list_display = ['title', 'customer', 'value', 'currency', 'status', 'probability', 'assigned_to', 'created_at']
+    list_filter = ['status', 'currency', 'probability', 'created_at', 'assigned_to']
+    search_fields = ['title', 'customer__user__username', 'customer__lead__first_name']
+    readonly_fields = ['created_at', 'updated_at', 'closed_at']
+
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ['title', 'activity_type', 'status', 'customer', 'lead', 'deal', 'assigned_to', 'due_date']
+    list_filter = ['activity_type', 'status', 'due_date', 'assigned_to']
+    search_fields = ['title', 'description']
+    readonly_fields = ['created_at', 'updated_at', 'completed_at']
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ['title', 'priority', 'status', 'assigned_to', 'due_date', 'completed_at']
+    list_filter = ['priority', 'status', 'due_date', 'assigned_to']
+    search_fields = ['title', 'description']
+    readonly_fields = ['created_at', 'updated_at', 'completed_at']
+
+@admin.register(Note)
+class NoteAdmin(admin.ModelAdmin):
+    list_display = ['title', 'note_type', 'customer', 'lead', 'deal', 'activity', 'created_by', 'created_at']
+    list_filter = ['note_type', 'is_private', 'created_at', 'created_by']
+    search_fields = ['title', 'content']
+    readonly_fields = ['created_at', 'updated_at']
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ['title', 'report_type', 'period_start', 'period_end', 'generated_by', 'generated_at', 'is_published']
+    list_filter = ['report_type', 'is_published', 'generated_at', 'generated_by']
+    search_fields = ['title', 'description']
+    readonly_fields = ['generated_at', 'data']

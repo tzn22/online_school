@@ -12,13 +12,13 @@ class UserAdmin(BaseUserAdmin):
     
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        (_('Personal info'), {
+        (_('Персональная информация'), {
             'fields': ('first_name', 'last_name', 'email', 'birth_date', 'phone', 'avatar')
         }),
-        (_('Permissions'), {
-            'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        (_('Права доступа'), {
+            'fields': ('role', 'parent', 'has_studied_language', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
         }),
-        (_('Important dates'), {
+        (_('Важные даты'), {
             'fields': ('last_login', 'created_at', 'updated_at')
         }),
     )
@@ -26,19 +26,19 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'password1', 'password2', 'role', 'email', 'first_name', 'last_name')
+            'fields': ('username', 'password1', 'password2', 'role', 'email', 'first_name', 'last_name', 'has_studied_language')
         }),
     )
     
     readonly_fields = ('created_at', 'updated_at', 'last_login')
 
-# Добавим остальные модели
+# Добавим остальные модели (без Customer)
 from courses.models import Course, Group, Lesson, Attendance
 from payments.models import Payment, Subscription, Invoice
 from chat.models import ChatRoom, Message
 from notifications.models import Notification
 from feedback.models import Feedback
-from crm.models import Lead, Customer, Deal
+from crm.models import Lead, Deal
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
@@ -55,6 +55,14 @@ class GroupAdmin(admin.ModelAdmin):
     search_fields = ['title', 'course__title', 'teacher__username']
     filter_horizontal = ['students']
     readonly_fields = ['created_at']
+    
+    def student_count(self, obj):
+        return obj.student_count
+    student_count.short_description = 'Количество студентов'
+    
+    def available_spots(self, obj):
+        return obj.available_spots
+    available_spots.short_description = 'Свободных мест'
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
@@ -73,8 +81,8 @@ class AttendanceAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['student', 'course', 'amount', 'currency', 'status', 'paid_at', 'created_at']
-    list_filter = ['status', 'currency', 'created_at', 'paid_at']
+    list_display = ['student', 'course', 'amount', 'currency', 'status', 'payment_method', 'created_at']
+    list_filter = ['status', 'payment_method', 'currency', 'created_at']
     search_fields = ['student__username', 'student__email', 'transaction_id']
     readonly_fields = ['created_at', 'updated_at', 'paid_at']
 
@@ -99,12 +107,12 @@ class ChatRoomAdmin(admin.ModelAdmin):
     list_filter = ['chat_type', 'is_active', 'created_at']
     search_fields = ['name', 'participants__username']
     filter_horizontal = ['participants']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at']
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['sender', 'room', 'message_type', 'short_content', 'is_read', 'created_at']
-    list_filter = ['message_type', 'is_read', 'created_at', 'room']
+    list_display = ['sender', 'room', 'message_type', 'short_content', 'created_at']
+    list_filter = ['message_type', 'created_at', 'room']
     search_fields = ['content', 'sender__username', 'room__name']
     readonly_fields = ['created_at', 'updated_at']
 
@@ -129,16 +137,9 @@ class LeadAdmin(admin.ModelAdmin):
     search_fields = ['first_name', 'last_name', 'email', 'phone']
     readonly_fields = ['created_at', 'updated_at']
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ['user', 'company', 'position', 'created_at']
-    list_filter = ['created_at']
-    search_fields = ['user__username', 'company', 'position']
-    readonly_fields = ['created_at', 'updated_at']
-
 @admin.register(Deal)
 class DealAdmin(admin.ModelAdmin):
-    list_display = ['title', 'customer', 'value', 'status', 'created_at']
+    list_display = ['title', 'lead', 'value', 'status', 'created_at']
     list_filter = ['status', 'created_at']
-    search_fields = ['title', 'customer__user__username']
+    search_fields = ['title', 'lead__first_name', 'lead__last_name']
     readonly_fields = ['created_at', 'updated_at']
