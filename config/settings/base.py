@@ -22,7 +22,16 @@ ALLOWED_HOSTS = [
     'www.fluencyclub.fun',
     '116.203.145.245'  # IP сервера
 ]
+CORS_ALLOWED_ORIGINS = [
+    'https://fluencyclub.fun',
+    'https://www.fluencyclub.fun',
+    'http://fluencyclub.fun',
+    'http://www.fluencyclub.fun',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
+CORS_ALLOW_ALL_ORIGINS = True
 # CSRF и CORS настройки
 CSRF_TRUSTED_ORIGINS = [
     'https://fluencyclub.fun',
