@@ -1,7 +1,114 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from accounts.models import User
-from .models import Lead
+from datetime import datetime, timedelta
+
+class Lead(models.Model):
+    """Потенциальный клиент (лид)"""
+    LEAD_STATUS_CHOICES = [
+        ('new', _('Новый')),
+        ('contacted', _('Связались')),
+        ('interested', _('Заинтересован')),
+        ('demo_scheduled', _('Назначена демо-встреча')),
+        ('demo_completed', _('Демо-встреча проведена')),
+        ('proposal_sent', _('Отправлено предложение')),
+        ('negotiation', _('Переговоры')),
+        ('converted', _('Конвертирован')),
+        ('lost', _('Потерян')),
+    ]
+    
+    LEAD_SOURCE_CHOICES = [
+        ('website', _('Сайт')),
+        ('social_media', _('Социальные сети')),
+        ('referral', _('Реферал')),
+        ('advertisement', _('Реклама')),
+        ('event', _('Мероприятие')),
+        ('other', _('Другое')),
+    ]
+    
+    first_name = models.CharField(
+        max_length=100,
+        verbose_name=_('Имя')
+    )
+    last_name = models.CharField(
+        max_length=100,
+        verbose_name=_('Фамилия')
+    )
+    email = models.EmailField(
+        verbose_name=_('Email')
+    )
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name=_('Телефон')
+    )
+    age = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_('Возраст')
+    )
+    interested_course = models.ForeignKey(
+        'courses.Course',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('Интересующий курс')
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=LEAD_STATUS_CHOICES,
+        default='new',
+        verbose_name=_('Статус')
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=LEAD_SOURCE_CHOICES,
+        default='website',
+        verbose_name=_('Источник')
+    )
+    notes = models.TextField(
+        blank=True,
+        verbose_name=_('Заметки')
+    )
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'role': 'admin'},
+        verbose_name=_('Назначен менеджер')
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Дата создания')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Дата обновления')
+    )
+    converted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Дата конверсии')
+    )
+    
+    class Meta:
+        verbose_name = _('Лид')
+        verbose_name_plural = _('Лиды')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['source', 'created_at']),
+            models.Index(fields=['assigned_to', 'created_at']),
+            models.Index(fields=['email']),
+            models.Index(fields=['phone']),
+        ]
+    
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - {self.status}"
+    
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
 class Customer(models.Model):
     """Клиент CRM"""
@@ -24,7 +131,7 @@ class Customer(models.Model):
         verbose_name=_('Должность')
     )
     lead = models.OneToOneField(
-        Lead,
+        Lead,  # ← Используем напрямую, без импорта
         on_delete=models.CASCADE,
         related_name='customer',
         null=True,
@@ -96,7 +203,7 @@ class Deal(models.Model):
         verbose_name=_('Клиент')
     )
     lead = models.ForeignKey(
-        Lead,
+        Lead,  # ← Используем напрямую, без импорта
         on_delete=models.CASCADE,
         related_name='deals',
         null=True,
@@ -231,7 +338,7 @@ class Activity(models.Model):
         verbose_name=_('Клиент')
     )
     lead = models.ForeignKey(
-        Lead,
+        Lead,  # ← Используем напрямую, без импорта
         on_delete=models.CASCADE,
         related_name='activities',
         null=True,
@@ -407,7 +514,7 @@ class Note(models.Model):
         verbose_name=_('Клиент')
     )
     lead = models.ForeignKey(
-        Lead,
+        Lead,  # ← Используем напрямую, без импорта
         on_delete=models.CASCADE,
         related_name='notes',
         null=True,
@@ -522,6 +629,10 @@ class Report(models.Model):
         blank=True,
         null=True,
         verbose_name=_('Файл отчета')
+    )
+    file_size = models.BigIntegerField(
+        default=0,
+        verbose_name=_('Размер файла (байты)')
     )
     
     class Meta:
