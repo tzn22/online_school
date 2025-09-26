@@ -13,7 +13,12 @@ SECRET_KEY = 'django-insecure-development-key-for-local-use-only'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    'fluencyclub.fun',
+    'www.fluencyclub.fun',
+    '116.203.145.245']
 
 # Application definition
 INSTALLED_APPS = [
